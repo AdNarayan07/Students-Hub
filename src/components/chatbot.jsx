@@ -231,8 +231,8 @@ export const ChatBox = ({
     }
   };
 
-  const handleEnter = (e) => {
-    if (e.ctrlKey) e.preventDefault();
+  const onkeydown = (e) => {
+    if (e.ctrlKey && (e.key === "z" || e.key == "y")) e.preventDefault();
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendButton.current?.click();
