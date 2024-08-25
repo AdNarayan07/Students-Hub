@@ -69,7 +69,7 @@ pub fn e_pub_highlight_save(uid: String, data: String) {
 // function to read content.opf data from an epub file
 fn read_opf_file(path: &str) -> Result<String, std::io::Error> {
     let file = File::open(path)?; // read the epub file
-    let mut archive = ZipArchive::new(file)?; //unzips the epub file
+    let mut archive = ZipArchive::new(file)?; // unzips the epub file
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;

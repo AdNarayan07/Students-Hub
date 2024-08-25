@@ -72,7 +72,7 @@ async fn get_response(
     messages: Vec<Message>,
     max_tokens: u16,
 ) -> Result<Vec<Value>, AppError> {
-    //create request body
+    // create request body
     let body = RequestBody {
         messages,
         model,
@@ -88,7 +88,7 @@ async fn get_response(
         .timeout(Duration::from_secs(5))
         .header(
             "Authorization",
-            format!("Bearer {}", crate::env::GROQ_API_KEY), //load GROQ_API_KEY from env.rs
+            format!("Bearer {}", crate::env::GROQ_API_KEY), // load GROQ_API_KEY from env.rs
         )
         .header("Content-Type", "application/json")
         .body(serde_json::to_string(&body)?)
@@ -202,13 +202,13 @@ pub async fn ask_buddy(
                 }
             }
 
-            //save the updated messsages to data to corresponsing json file
+            // save the updated messsages to data to corresponsing json file
             let _ = save_data(
                 format!("prev_chats/{}.json", active_chat_id).as_str(),
                 &serde_json::to_string(&messages)?,
             )?;
 
-            //return title, new message from assistant and model used for fetching message
+            // return title, new message from assistant and model used for fetching message
             Ok((title, msg, current_model.to_string()))
         }
         Err(e) => Err(e),
@@ -235,7 +235,7 @@ pub fn get_chat_data(active_chat_id: String, default_message: &str) -> Vec<Messa
     data
 }
 
-//get_chats_list command: returns a Hashmap of chat id and corresponding Title and Last Modified data
+// get_chats_list command: returns a Hashmap of chat id and corresponding Title and Last Modified data
 #[tauri::command]
 pub fn get_chats_list() -> HashMap<String, (String, u128)> {
     // read chats list
@@ -244,7 +244,7 @@ pub fn get_chats_list() -> HashMap<String, (String, u128)> {
             let chats_list: HashMap<String, String> = serde_json::from_str(&data).unwrap(); // generate hashmap from json data
             let mut chats_list_from_files: HashMap<String, (String, u128)> = HashMap::new(); // generate new mutable hashmap
 
-            //read all saved chats file
+            // read all saved chats file
             match read_dir("prev_chats") {
                 // loop through files of the directory
                 Ok(files) => files.for_each(|file| {
@@ -272,7 +272,7 @@ pub fn get_chats_list() -> HashMap<String, (String, u128)> {
                             .unwrap_or(&"New Chat".to_string())
                             .to_string();
 
-                        chats_list_from_files.insert(name.to_string(), (title, last_modified_ms)); //insert data
+                        chats_list_from_files.insert(name.to_string(), (title, last_modified_ms)); // insert data
                     }
                 }),
                 Err(e) => {
@@ -288,11 +288,11 @@ pub fn get_chats_list() -> HashMap<String, (String, u128)> {
 // delete_chat command: delete the chat file and remove the entry from chats_list
 #[tauri::command]
 pub fn delete_chat(id: String) {
-    //delete file
-    let _= delete_file(format!("prev_chats/{}.json", id).as_str())
+    // delete file
+    let _ = delete_file(format!("prev_chats/{}.json", id).as_str())
         .inspect_err(|e| println!("Could not delete chat file: {}", e));
 
-    //remove entry from list
+    // remove entry from list
     match read_data("prev_chats/list.json") {
         Ok(data) => {
             let mut chats_list: HashMap<String, String> =

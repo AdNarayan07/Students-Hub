@@ -65,7 +65,7 @@ fn generate_data_path(pathname: &str) -> PathBuf {
     }));
 
     path.push("hub.students.adnarayan"); // push package name to path
-    path.push(pathname); //push the relative file pathname
+    path.push(pathname); // push the relative file pathname
     path
 }
 

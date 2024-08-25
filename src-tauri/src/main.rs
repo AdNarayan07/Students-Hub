@@ -34,7 +34,7 @@ pub fn main() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_single_instance::init(
             move |app, _args, _cwd| {
-                let _ = show_window(app); //shows and focus the window when .exe file is clicked, instead of opening a new window
+                let _ = show_window(app); // shows and focus the window when .exe file is clicked, instead of opening a new window
             },
         ))
         .plugin(tauri_plugin_shell::init())
