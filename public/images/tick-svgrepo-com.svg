@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?><!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>
+    .stroke-green-intense {
+    stroke: #540000;
+}
+
+@media (prefers-color-scheme: dark) {
+    .stroke-green-intense {
+        stroke: #ffefef;
+    }
+}
+</style>
+<path d="M18 7L9.42857 17L6 13" class="stroke-green-intense" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,43 @@
+{
+  "productName": "Students Hub",
+  "version": "1.0.0",
+  "identifier": "hub.students.adnarayan",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Student's Hub",
+        "width": 800,
+        "height": 600,
+        "maximized": true,
+        "shadow": true,
+        "decorations": false
+      }
+    ],
+    "security": {
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      },
+      "csp": "connect-src 'self' asset: http://asset.localhost http://ipc.localhost http://tauri.localhost; style-src 'self' 'unsafe-inline' blob: http://asset.localhost; style-src-elem 'self' 'unsafe-inline' blob: http://asset.localhost; img-src 'self' blob: data: http://asset.localhost",
+      "devCsp": "default-src 'self' asset: http://asset.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Aditya Narayan"
+  }
+}

@@ -1,0 +1,16 @@
+.sidebar {
+  transform: translateX(-5rem);
+  transition: transform 0.3s ease-in-out;
+}
+.sidebar_button {
+  transform: translateX(8rem);
+  transition: transform 0.3s ease-in-out;
+}
+.sidebar:hover,
+.sidebar:has(.sidebar_button:hover) {
+  transform: translateX(0);
+}
+.sidebar_button:hover,
+.sidebar:hover > .sidebar_button {
+  transform: translateX(3rem);
+}

@@ -1,0 +1,54 @@
+.react-pdf__Document {
+  overflow: auto;
+  user-select: text;
+}
+.react-pdf__Thumbnail__page__canvas,
+.react-pdf__Thumbnail__page {
+  border-radius: 5px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+.react-pdf__Page,
+.react-pdf__Thumbnail__page {
+  width: fit-content;
+  background-color: transparent !important;
+}
+.react-pdf__Page__canvas {
+  border: 5px solid gray;
+}
+.react-pdf__Outline ul {
+  font-weight: bold;
+  list-style-type: none;
+}
+ul ul {
+  font-weight: 600 !important;
+  padding-left: 1.25rem;
+  margin-top: 0.7rem;
+}
+ul ul ul {
+  font-weight: 400 !important;
+}
+.react-pdf__Outline li {
+  margin-bottom: 0.25rem;
+}
+.react-pdf__Outline a {
+  display: inline-block;
+  background-color: #0000002d;
+  padding: 0.25rem 1.5rem;
+  margin-bottom: 0.25rem;
+  border-radius: 0.25rem;
+  border-left: 0.15rem solid black;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+}
+.textLayer span::selection {
+  color: transparent;
+  background-color: #002aff7d;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
