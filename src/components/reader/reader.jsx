@@ -1,19 +1,25 @@
+/*
+ Reader component, currently supports pdf and epub
+*/
+
 import { useEffect, useState, lazy } from "react";
-import { useActiveState } from "./active_state_context";
+import { useActiveState } from "../common/active_state_context";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { confirm } from "@tauri-apps/plugin-dialog";
 const EpubViewer = lazy(() => import("./epub"));
 const PdfViewer = lazy(() => import("./pdf"));
 
 export default function Reader() {
+  const { currentPage } = useActiveState();
+
   const [FilePath, setFilePath] = useState(null);
   const [FileName, setFileName] = useState(null);
   const [ePubData, set_ePubData] = useState(null);
-  const { currentPage } = useActiveState();
 
+  // function to get epub data (highlights and titile)
   const get_ePubData = async (path) => {
     try {
-      const response = await invoke("e_pub_data_get", { path });
+      const response = await invoke("e_pub_data_get", { path }); // invoke e_pub_data_get
       let data = {};
       data.uid = response[0];
       data.title = response[1];
@@ -23,18 +29,24 @@ export default function Reader() {
       console.error("Couldn't Load Highlights: ", error);
     }
   };
+
+  // get epub data if filepath/name is changed and the new one is an epub
   useEffect(() => {
     if (FilePath && FileName?.toLowerCase().endsWith(".epub")) {
       get_ePubData(FilePath);
     }
   }, [FilePath, FileName]);
+
+  // function to load file path and name
   const loadFile = async () => {
     try {
-      const response = await invoke("open_file_dialog");
+      const response = await invoke("open_file_dialog"); // invokes the command to open a file select dialog
       setFileName(response.name);
+
+      // loading very large files is causing application to crash so added this check
       if (response.size / (1024 * 1024) > 100) {
         let continueLoading = await confirm(
-          "Loading files larger than 100MB may cause the application to hang. Wanna continue?"
+          "Loading files larger than 100MB may cause the application to crash. Wanna continue?"
         );
         if (continueLoading) {
           setFilePath(response.path);
@@ -44,6 +56,7 @@ export default function Reader() {
       console.error("Failed to open PDF:", error);
     }
   };
+  
   return (
     <div
       className={

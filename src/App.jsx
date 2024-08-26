@@ -1,15 +1,18 @@
-import { useActiveState } from "./components/active_state_context";
-import { useEffect, lazy } from "react";
+import { useActiveState } from "./components/common/active_state_context";
+import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-const Tools = lazy(() => import("./components/tools"));
-const Reader = lazy(() => import("./components/reader"));
-const Sidebar = lazy(() => import("./components/sidebar"));
-const ChatBot = lazy(() => import("./components/chatbot"));
-const WindowControls = lazy(() => import("./components/window_controls"));
+// importing components
+import Tools from "./components/tools/tools";
+import Reader from "./components/reader/reader";
+import ChatBot from "./components/chatbot/chatbot";
+import Sidebar from "./components/common/sidebar";
+import WindowControls from "./components/common/window_controls";
 
 function App() {
   const { setInstalledFonts } = useActiveState();
+
+  // load the names of all installed fonts in system
   useEffect(() => {
     async function loadFonts() {
       try {
@@ -21,6 +24,7 @@ function App() {
     }
     loadFonts();
   }, []);
+
   return (
     <div className="text-black dark:text-white bg-white dark:bg-black">
       <Tools />
@@ -29,7 +33,7 @@ function App() {
       <Sidebar />
       <WindowControls />
       <div className="hidden rotate-270" />{" "}
-      {/*Preloading some tailwind classes XD*/}
+      {/*Preloading some tailwind classes which are dynamically used and hance loaded in compile timer*/}
     </div>
   );
 }

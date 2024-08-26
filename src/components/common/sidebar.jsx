@@ -1,3 +1,7 @@
+/*
+ Side bar to navigate between pages (tools, reader and chatbot)
+*/
+
 import { useActiveState } from "./active_state_context";
 import "./sidebar.css";
 

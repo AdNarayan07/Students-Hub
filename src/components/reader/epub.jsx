@@ -1,36 +1,36 @@
+/*
+  epub reader component, uses react-reader to display epub files
+*/
+
+
 import { ReactReader, ReactReaderStyle } from "react-reader";
-import { useEffect, useState, useRef, act } from "react";
-import {
-  useActiveState,
-  generateUUIDWithTimestamp,
-} from "./active_state_context";
+import { useEffect, useState, useRef } from "react";
+
+import { useActiveState } from "../common/active_state_context";
+import { TextSelection } from "../common/custom_context_menu";
+
 import { invoke } from "@tauri-apps/api/core";
 import { confirm } from "@tauri-apps/plugin-dialog";
-import { TextSelection } from "./custom_context_menu";
-
 import "./epub.css";
 
 const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
-  const id = generateUUIDWithTimestamp();
   const { installedFonts, setInvokeOnClose } = useActiveState();
   const [location, setLocation] = useState(null);
   const [fontSize, setFontSize] = useState(
-    parseInt(localStorage.getItem("ebookFontSize")) || 16
+    parseInt(localStorage.getItem("ebookFontSize")) || 16 // load the preferred font size or use default
   );
   const [fontFace, setFontFace] = useState(
-    localStorage.getItem("ebookFontFace"),
-    installedFonts[0]
+    localStorage.getItem("ebookFontFace") || installedFonts[0] // load the preferred font family or use first one in the system installed fonts (only for the book)
   );
-  const [selections, setSelections] = useState([]);
-
+  const [highlights, setHighlights] = useState([]);
   const [recentActions, setRecentActions] = useState([]);
   const [undoneActions, setUndoneActions] = useState([]);
-
   const [ContextMenu, setContextMenu] = useState(null);
 
   const [mode, setMode] = useState("select");
   const modeRef = useRef(mode);
-
+  const rendition = useRef(undefined);
+  // a list of modes and their corresponding icons
   const EpubModes = {
     select: (
       <svg
@@ -206,18 +206,22 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
     ),
   };
 
+  // function to add to highlights
   function setRenderSelection(cfiRange, contents) {
-    if (rendition.current && modeRef.current.startsWith("h")) {
+    if (rendition.current && modeRef.current.startsWith("h")) { // if highlight mode is on then only apply highlight
       try {
-        setSelections((list) => {
+        setHighlights((list) => {
           const newSelection = {
             color: modeRef.current.split("_")[1],
             cfiRange,
           };
+
+          // do not add same highlight range twice
           const alreadyExists = list.some(
             (item) => item.cfiRange === newSelection.cfiRange
           );
           if (!alreadyExists) {
+            // add the "add" highlighlights action to recent actions
             setRecentActions((list) =>
               list.concat({ action: "add", data: newSelection })
             );
@@ -225,16 +229,18 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
           }
           return list;
         });
+
+        // clear the selections
         const selection = contents.window.getSelection();
         selection?.removeAllRanges();
-        setUndoneActions([]);
+        setUndoneActions([]); // clear the undone actions (i.e. nothing to redo)
       } catch (e) {
         console.error(e);
       }
     }
   }
 
-  const rendition = useRef(undefined);
+  //function to re-render annotations (highlights)
   let reRenderAnnotations = () => {
     try {
       rendition.current
@@ -244,12 +250,15 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
       console.error(e);
     }
   };
+
+  // change font face and size then re-render annotations
   useEffect(() => {
     rendition.current?.themes.fontSize(fontSize + "px");
     rendition.current?.themes.override("font-family", fontFace);
     reRenderAnnotations();
   }, [fontSize, fontFace]);
 
+  // reset onselected listener when mode is changed
   useEffect(() => {
     modeRef.current = mode;
     rendition.current
@@ -261,15 +270,19 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
     return () => rendition.current?.off("selected", setRenderSelection); // Cleanup listener on unmount
   }, [mode]);
 
+  // render updated highlights when a highlight is added or removed
   useEffect(() => {
     try {
+      // clear prev highlights
       Object.entries(
         rendition?.current?.annotations?._annotations || {}
       )?.forEach((value) => {
         const { type, cfiRange } = value[1];
         rendition?.current?.annotations?.remove(cfiRange, type);
       });
-      selections?.forEach((selection) => {
+
+      // add new highlights
+      highlights?.forEach((selection) => {
         if (!selection) return;
         const { color, cfiRange } = selection;
         rendition.current?.annotations?.add(
@@ -277,13 +290,15 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
           cfiRange,
           {},
           (e) => {
+            // if current mode is erase, remove the highlight on click
             if (modeRef.current === "erase") {
-              setSelections((list) =>
+              setHighlights((list) =>
                 list.filter(
                   (item) =>
                     !(item.color === color && item.cfiRange === cfiRange)
                 )
               );
+              // add the remove action to list of recent actions
               setRecentActions((list) =>
                 list.concat({ action: "remove", data: { color, cfiRange } })
               );
@@ -296,15 +311,17 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
     } catch (e) {
       console.error(e);
     } finally {
+      // set the invokeOnClose command so that if close button is pressed, the highlights will be saved before closing
       setInvokeOnClose({
         name: "e_pub_highlight_save",
-        args: { uid: ePubData.uid, data: JSON.stringify(selections) },
+        args: { uid: ePubData.uid, data: JSON.stringify(highlights) },
       });
     }
     return () => {
-      setInvokeOnClose(null);
+      setInvokeOnClose(null); // set the command to null on dismount
     };
-  }, [selections]);
+  }, [highlights]);
+
   const readerStyles = {
     ...ReactReaderStyle,
     tocButtonExpanded: {
@@ -313,28 +330,33 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
     },
   };
 
+  // function to change font size
   function changeFontSize(amount) {
     let newFontSize = fontSize + amount;
-    if (newFontSize < 10 || newFontSize > 36) return;
+    if (newFontSize < 10 || newFontSize > 36) return; // limit the range of font size
     setFontSize(newFontSize);
     localStorage.setItem("ebookFontSize", newFontSize);
   }
 
+  // undo recent action
   const undo = () => {
     if (!recentActions?.length) return;
     try {
       let clonedRecentActions = Array.from(recentActions);
-      let removedRecentAction = clonedRecentActions.pop();
+      let removedRecentAction = clonedRecentActions.pop(); // gets the most recent action + removes it from original array
       if (!removedRecentAction) return;
 
       const { action, data } = removedRecentAction;
-      setSelections((list) => {
+      setHighlights((list) => {
+        // if recent action was remove, add the highlight back and vice versa, if it was clear, add all cleared highlights back
         if (action === "remove") return list.concat(data);
         if (action === "add")
           return list.filter((item) => !(item.cfiRange === data.cfiRange));
         if (action === "clear") return data;
         return list;
       });
+
+      // update the recent and undone actions
       setRecentActions(clonedRecentActions);
       setUndoneActions((list) => list.concat(removedRecentAction));
     } catch (e) {
@@ -342,21 +364,25 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
     }
   };
 
+  // redo recent undone actions
   const redo = () => {
     try {
       if (!undoneActions?.length) return;
       let clonedUndoneActions = Array.from(undoneActions);
-      let removedUndoneSelection = clonedUndoneActions.pop();
+      let removedUndoneSelection = clonedUndoneActions.pop(); // gets the most recent undone action + removes it from original array
       if (!removedUndoneSelection) return;
 
       const { action, data } = removedUndoneSelection;
-      setSelections((list) => {
+      setHighlights((list) => {
+        // if undone action was add, add the highlight back and vice versa, if it was clear, again clear them
         if (action === "remove")
           return list.filter((item) => !(item.cfiRange === data.cfiRange));
         if (action === "add") return list.concat(data);
         if (action === "clear") return [];
         return list;
       });
+
+      // update the recent and undone actions
       setUndoneActions(clonedUndoneActions);
       setRecentActions((list) => list.concat(removedUndoneSelection));
     } catch (e) {
@@ -364,22 +390,25 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
     }
   };
 
+  // function to clear all highlights
   const clear = async () => {
     try {
-      if (!selections?.length) return;
-      let confirmClear = await confirm("Clear All Highlights?");
+      if (!highlights?.length) return;
+      let confirmClear = await confirm("Clear All Highlights?"); // confirm it first
       if (confirmClear) {
         setRecentActions((list) =>
-          list.concat({ action: "clear", data: selections })
+          list.concat({ action: "clear", data: highlights }) // add the action to recent actions
         );
+        // clear undone actions ang the highlights
         setUndoneActions([]);
-        setSelections([]);
+        setHighlights([]);
       }
     } catch (e) {
       console.error(e);
     }
   };
 
+  // hotkeys for undo redo and clear
   useEffect(() => {
     const keyupListener = (e) => {
       if (e.ctrlKey) {
@@ -404,8 +433,9 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
       document.removeEventListener("keyup", keyupListener);
       rendition.current?.off("keyup", keyupListener);
     };
-  }, [selections]);
+  }, [highlights]);
 
+  // hotkeys for changing font size
   useEffect(() => {
     const keydownListener = (e) => {
       if (e.ctrlKey) {
@@ -445,7 +475,7 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
               onClick={async () => {
                 await invoke("e_pub_highlight_save", {
                   uid: ePubData.uid,
-                  data: JSON.stringify(selections),
+                  data: JSON.stringify(highlights),
                 });
                 setLocation(null);
                 setFileName(null);
@@ -466,6 +496,7 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
             </button>
           </div>
           <div className="z-10 flex xl:items-center h-12 hover:h-max xl:hover:h-12 overflow-hidden gap-4 py-1.5 px-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md transform translate-y-4 xl:overflow-auto flex-col xl:flex-row xl:pt-0 xl:px-4 xl:py-0 xl:translate-x-0">
+            {/* mapping through the modes and rendering the buttons */}
             {Object.entries(EpubModes).map(([key, icon]) => (
               <label key={key} className="flex items-center cursor-pointer">
                 <input
@@ -537,7 +568,7 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
                 disabled={(() => {
                   if (key === "undo") return !recentActions?.length;
                   if (key === "redo") return !undoneActions?.length;
-                  if (key === "clear") return !selections?.length;
+                  if (key === "clear") return !highlights?.length;
                   return false;
                 })()}
               >
@@ -585,6 +616,7 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
             className="block w-auto ml-10 h-12 p-2.5 text-gray-900 dark:text-gray-300 bg-transparent shadow-lg cursor-pointer"
             style={{ fontFamily: fontFace }}
           >
+            {/* map through the installed fonts */}
             {installedFonts.map((option, index) => (
               <option
                 key={index}
@@ -653,7 +685,7 @@ const EpubViewer = ({ url, setFileName, setFilePath, ePubData }) => {
           ePubData.highlights?.forEach((selection) => {
             if (!selection) return;
             const { color, cfiRange } = selection;
-            setSelections((list) =>
+            setHighlights((list) =>
               list.concat({
                 color,
                 cfiRange,

@@ -1,8 +1,12 @@
+/*
+  chatbot reader component, uses groq api to help the students and answer their queries
+*/
+
 import { useState, useEffect, useRef } from "react";
 import {
   useActiveState,
   generateUUIDWithTimestamp,
-} from "./active_state_context";
+} from "../common/active_state_context";
 
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,10 +17,11 @@ import {
   vscDarkPlus,
 } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-import { InputSelection, TextSelection } from "./custom_context_menu";
+import { InputSelection, TextSelection } from "../common/custom_context_menu";
 
 import { invoke } from "@tauri-apps/api/core";
 
+// component to show the list of saved chats
 const SavedChats = ({ chatHistory, get_chats, setAdditional }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
@@ -121,7 +126,9 @@ const SavedChats = ({ chatHistory, get_chats, setAdditional }) => {
     </div>
   );
 };
-export const ChatBox = ({
+
+// component to show the chats of currently active chat id
+const ChatBox = ({
   setChatHistory,
   chatHistory,
   additional,
@@ -129,6 +136,8 @@ export const ChatBox = ({
   setContextMenu,
 }) => {
   const { activeChatId, referenceData, darkTheme } = useActiveState();
+
+  // set the default system message for LLM along with reference data, if any
   const defaultMessage = `You are a student's assistant, user's Buddy. You have to provide accurate information about the asked topics, answer the questions, do calculations and so on. Try to be as concise as possible unless asked. ${
     referenceData
       ? `Here is some data you can use: \`\`\`${referenceData
@@ -144,55 +153,46 @@ export const ChatBox = ({
     { role: "system", content: defaultMessage },
   ]);
   const [currentModel, setCurrentModel] = useState(null);
-  const [chatTitle, setChatTitle] = useState("New Chat");
+  const [chatTitle, setChatTitle] = useState("New Chat"); // default chat title
   const sendButton = useRef(null);
 
+  const textareaRef = useRef(null);
+
+  // get the chats of active id on render
   useEffect(() => {
     async function get_chat_data(activeChatId) {
-      sendButton.current.disabled = true;
+      sendButton.current.disabled = true; // disable send button while chats are loading
       let prev_chats = await invoke("get_chat_data", {
         activeChatId,
         defaultMessage,
       });
       let system_chat = prev_chats.filter((e) => e.role === "system")[0];
-      const refMsg = system_chat?.content?.match(/```(.*?)```/s)?.[1]?.trim();
+      const refMsg = system_chat?.content?.match(/```(.*?)```/s)?.[1]?.trim(); // extract the reference message from system chat
       setReferenceMessage({ role: "reference", content: refMsg });
       setMessages(prev_chats);
       setChatTitle(
         chatHistory?.[activeChatId]?.[0]?.replaceAll("*", "") || "New Chat"
       );
-      sendButton.current.disabled = false;
+      sendButton.current.disabled = false; // enable the button back
     }
     if (activeChatId) {
       get_chat_data(activeChatId);
     }
   }, [activeChatId]);
 
-  const LoadingMessage = () => {
-    return `<div className="flex items-center mb-4 px-4 rounded max-w-[90%] bg-gray-200 dark:bg-gray-800 self-start">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" class="w-full h-10"><circle fill="${
-                  darkTheme ? "white" : "black"
-                }" stroke="${
-      darkTheme ? "white" : "black"
-    }" stroke-width="11" r="15" cx="40" cy="100"><animate attributeName="opacity" calcMode="spline" dur="1" values="1;0;1;" keySplines=".5 0 .5 1;.5 0 .5 1" repeatCount="indefinite" begin="-.4"></animate></circle><circle fill="${
-      darkTheme ? "white" : "black"
-    }" stroke="${
-      darkTheme ? "white" : "black"
-    }" stroke-width="11" r="15" cx="100" cy="100"><animate attributeName="opacity" calcMode="spline" dur="1" values="1;0;1;" keySplines=".5 0 .5 1;.5 0 .5 1" repeatCount="indefinite" begin="-.2"></animate></circle><circle fill="${
-      darkTheme ? "white" : "black"
-    }" stroke="${
-      darkTheme ? "white" : "black"
-    }" stroke-width="11" r="15" cx="160" cy="100"><animate attributeName="opacity" calcMode="spline" dur="1" values="1;0;1;" keySplines=".5 0 .5 1;.5 0 .5 1" repeatCount="indefinite" begin="0"></animate></circle></svg>
-            </div>`;
-  };
+  const LoadingMessage = `<div className="flex items-center mb-4 px-4 rounded max-w-[90%] bg-gray-200 dark:bg-gray-800 self-start">
+    <img src="images/loading.svg" class="w-full h-10">
+    </div>`;
 
-  const textareaRef = useRef(null);
+  // function to set tea=xtarea height to its scrollheight
   const resizeArea = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   };
+
+  //on subsmission, invoke ask_budddy command and display the fetched data
   const handleSubmission = async (e) => {
     e.preventDefault();
 
@@ -200,7 +200,7 @@ export const ChatBox = ({
     let content = formData.get("message").trim().replace("\n", "  \n");
     if (!content) return;
     sendButton.current.disabled = true;
-    setAdditional({ role: "assistant", content: LoadingMessage() });
+    setAdditional({ role: "assistant", content: LoadingMessage });
     const newMessages = [...messages, { role: "user", content }];
     setMessages(newMessages);
 
@@ -224,13 +224,14 @@ export const ChatBox = ({
       setAdditional({ role: null, content: null });
     } catch (e) {
       console.error(e);
-      setAdditional({ role: "error", content: e + "\n\nPlease Retry!" });
+      setAdditional({ role: "error", content: e + "\n\nPlease Retry!" }); // show the error if encountered
       setMessages(newMessages.slice(0, -1));
     } finally {
       sendButton.current.disabled = false;
     }
   };
 
+  // send the message on enter, add newline on shift + enter
   const onkeydown = (e) => {
     if (e.ctrlKey && (e.key === "z" || e.key == "y")) e.preventDefault();
     if (e.key === "Enter" && !e.shiftKey) {
@@ -239,6 +240,7 @@ export const ChatBox = ({
     }
   };
 
+  // greeting message when chat is empty
   const Greet = () => (
     <div className="flex flex-col items-center justify-center h-full bg-white text-gray-900 dark:bg-gray-900 dark:text-white">
       <img src="images/chat-bot-svgrepo-com.svg" className="w-20 h-20" />
@@ -252,6 +254,8 @@ export const ChatBox = ({
       </div>
     </div>
   );
+
+  // component to show codeblocks, using react syntax highlighter
   const CodeBlock = ({ rest, language, value }) => {
     const [copying, setCopying] = useState(false);
     return (
@@ -355,6 +359,7 @@ export const ChatBox = ({
     );
   };
 
+  // render custom context menu when a text in messagebox is selected
   function oncontextmenuDiv(e) {
     e.preventDefault();
     let selection = document.getSelection();
@@ -368,6 +373,7 @@ export const ChatBox = ({
     );
   }
 
+  // component to render all the messages, with markdown formatting 
   const Messages = () => (
     <div
       className={
@@ -532,6 +538,7 @@ export const ChatBox = ({
     </div>
   );
 
+  // context menu when textarea is clicked
   function oncontextmenuTextArea(e) {
     e.preventDefault();
     let selection = document.getSelection();
@@ -604,7 +611,7 @@ export const ChatBox = ({
 const ChatBot = () => {
   const { currentPage, activeChatId } = useActiveState();
   const [chatHistory, setChatHistory] = useState(null);
-  const [additional, setAdditional] = useState({ role: null, content: null });
+  const [additional, setAdditional] = useState({ role: null, content: null }); // additional message to display, like loading or error
 
   const [ContextMenu, setContextMenu] = useState(null);
   const get_chats = async () => {

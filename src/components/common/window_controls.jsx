@@ -1,24 +1,44 @@
+/*
+ custom window controls component (minimize maximize close)
+*/
+
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useActiveState } from "./active_state_context";
 
 const WindowControls = () => {
   const { invokeOnClose } = useActiveState();
   const [isMaximized, setIsMaximized] = useState(true);
+
+  // set isMaximized on window resize
+  useEffect(()=>{
+    let handleResize = async () => {
+      setIsMaximized(await getCurrentWebviewWindow().isMaximized())
+    }
+    window.addEventListener("resize", handleResize)
+
+    return () => window.removeEventListener("resize", handleResize)
+  },[])
+
+  // minimze the window
   const minimizeWindow = () => getCurrentWebviewWindow().minimize();
+
+  // maximize/unmaximize the window
   const toggleMaximization = async () => {
-    const isMaximized = await getCurrentWebviewWindow().isMaximized();
     isMaximized
       ? getCurrentWebviewWindow().unmaximize()
       : getCurrentWebviewWindow().maximize();
-    setIsMaximized(isMaximized);
   };
+
+  // invoke the invokeOnClose command and then close the window when done
   const closeWindow = async () => {
     if (invokeOnClose?.name)
       await invoke(invokeOnClose.name, invokeOnClose.args);
     getCurrentWebviewWindow().close();
   };
+
+  
   return (
     <div className="flex space-x-2 p-2 fixed top-2 right-2">
       <button
@@ -35,7 +55,7 @@ const WindowControls = () => {
         {
           <img
             src={`images/${
-              isMaximized ? "maximize" : "minimize"
+              isMaximized ? "minimize" : "maximize"
             }-svgrepo-com.svg`}
             alt="Expand"
             className="w-6 h-6"

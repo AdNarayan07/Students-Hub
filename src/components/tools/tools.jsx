@@ -1,10 +1,14 @@
+/*
+ Tools component (currenly has only one tool, more to come)
+*/
+
 import { lazy } from "react";
-import { useActiveState } from "./active_state_context";
+import { useActiveState } from "../common/active_state_context";
 import "./tools.css";
 const Timer = lazy(() => import("./timer"));
 
 export default function Tools() {
-  const { currentPage, currentTool, setCurrentTool } = useActiveState(); // State to manage which section is visible
+  const { currentPage, currentTool, setCurrentTool } = useActiveState();
   return (
     <div
       className={
@@ -21,6 +25,7 @@ export default function Tools() {
         <span className="ml-2">Tools</span>
       </h1>
       <div className="tab-container">
+        {/* toggle buttons, + placeholder too */}
         <ul className="tabs">
           <li
             className={currentTool === "tool2" ? "active" : ""}
@@ -58,6 +63,7 @@ export default function Tools() {
         </ul>
       </div>
       <Timer />
+      {/* Placeholder div */}
       <div
         className={
           currentTool === "timer"

@@ -1,3 +1,7 @@
+/*
+  pdf reader component, uses react-pdf to render the pdfs
+*/
+
 import { pdfjs } from "react-pdf";
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -6,15 +10,14 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 import React, { useEffect, useRef, useState } from "react";
 import { Document, Page, Thumbnail, Outline } from "react-pdf";
-import { useActiveState } from "./active_state_context";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
+
 import "./pdf.css";
 
-import { TextSelection } from "./custom_context_menu";
+import { TextSelection } from "../common/custom_context_menu";
 
 const PdfViewer = ({ setFileName, setFilePath, url }) => {
-  const { darkTheme } = useActiveState();
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const currentPageNumberInputRef = useRef(null);
@@ -29,13 +32,16 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
   const thumbnailDivRef = useRef(null);
   const [ContextMenu, setContextMenu] = useState(null);
 
+  // set pdfref on loading
   function onDocumentLoadSuccess(pdf) {
     pdfRef.current = pdf;
   }
 
+  // set outlines if any
   function outlineLoadSuccess(outline) {
     setOutlines(outline);
   }
+
   useEffect(() => {
     if (!pdfRef.current) return;
     const { numPages } = pdfRef.current;
@@ -43,23 +49,27 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
     setPageNumber(1);
   }, [pdfRef.current]);
 
+  // update the page number input as we navigate through pages
   useEffect(() => {
     if (currentPageNumberInputRef.current)
       currentPageNumberInputRef.current.value = pageNumber;
   }, [pageNumber, currentPageNumberInputRef.current]);
 
+
+  // scroll to top when jumping to a new page
   useEffect(() => {
     documentRef.current?.scrollTo({ top: 0, behavior: "auto" });
     setTimeout(
       () =>
         thumbnailDivRef.current?.scrollTo({
-          top: (pageNumber - 1) * 120,
+          top: (pageNumber - 1) * 152,
           behavior: "smooth",
         }),
       100
     );
   }, [pageNumber]);
 
+  // change current page number
   function changePage(offset) {
     setPageNumber((prevPageNumber) => {
       if (!numPages) return prevPageNumber;
@@ -71,17 +81,16 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
       }
     });
   }
-
   function previousPage() {
     changePage(-1);
   }
-
   function nextPage() {
     changePage(1);
   }
 
+  // function to call when an item like thumbnail or outline is clicked
   function onItemClick({ dest, pageNumber }) {
-    setPageNumber(pageNumber);
+    setPageNumber(pageNumber); // set current page as returned from item
 
     if (!pdfRef.current || !dest) return;
     setTimeout(() => {
@@ -92,6 +101,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
         let scrollTop = 0;
         let scrollLeft = 0;
 
+        // scroll to the destination
         switch (rotate % 360) {
           case 0:
             scrollTop = viewport.height - yOffset;
@@ -123,6 +133,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
     }, 10);
   }
 
+  // function to open the doc in fullscreen (currently supports only keyboard input)
   const openFullScreen = () => {
     if (documentRef.current?.requestFullscreen) {
       documentRef.current?.requestFullscreen();
@@ -137,6 +148,8 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
       documentRef.current?.msRequestFullscreen();
     }
   };
+
+  // zoom and rotate fn
   function zoomIn() {
     if (scale < 5) setScale(scale * 1.5);
   }
@@ -151,6 +164,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
     setRotate((((rotate - 90) % 360) + 360) % 360);
   }
 
+  // adding keydown event listener to document
   useEffect(() => {
     function keydownListener(e) {
       if (!e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -188,6 +202,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
     return () => document.removeEventListener("keydown", keydownListener);
   }, [numPages]);
 
+  // adding keyup listener to document
   useEffect(() => {
     function keyupListener(e) {
       if (e.ctrlKey) {
@@ -222,6 +237,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
     return () => document.removeEventListener("keyup", keyupListener);
   }, [scale, rotate]);
 
+  // resize pdf page when the document div is resized
   useEffect(() => {
     const handleResize = () => {
       if (documentRef.current) {
@@ -242,70 +258,8 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
     };
   }, [documentRef.current]);
 
-  const loading = (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 200 200"
-      className="w-[50%] h-[50%]"
-    >
-      <circle
-        fill={darkTheme ? "white" : "black"}
-        stroke={darkTheme ? "white" : "black"}
-        strokeWidth="11"
-        r="15"
-        cx="40"
-        cy="100"
-      >
-        <animate
-          attributeName="opacity"
-          calcMode="spline"
-          dur="1"
-          values="1;0;1;"
-          keySplines=".5 0 .5 1;.5 0 .5 1"
-          repeatCount="indefinite"
-          begin="-.4"
-        ></animate>
-      </circle>
-      <circle
-        fill={darkTheme ? "white" : "black"}
-        stroke={darkTheme ? "white" : "black"}
-        strokeWidth="11"
-        r="15"
-        cx="100"
-        cy="100"
-      >
-        <animate
-          attributeName="opacity"
-          calcMode="spline"
-          dur="1"
-          values="1;0;1;"
-          keySplines=".5 0 .5 1;.5 0 .5 1"
-          repeatCount="indefinite"
-          begin="-.2"
-        ></animate>
-      </circle>
-      <circle
-        fill={darkTheme ? "white" : "black"}
-        stroke={darkTheme ? "white" : "black"}
-        strokeWidth="11"
-        r="15"
-        cx="160"
-        cy="100"
-      >
-        <animate
-          attributeName="opacity"
-          calcMode="spline"
-          dur="1"
-          values="1;0;1;"
-          keySplines=".5 0 .5 1;.5 0 .5 1"
-          repeatCount="indefinite"
-          begin="0"
-        ></animate>
-      </circle>
-    </svg>
-  );
-
-  const ThumbnailWrapper = ({ index, pdf, onItemClick }) => {
+  // loading thumbnails but only when they come into view to prevent lag
+  const ThumbnailWrapper = ({ index, onItemClick }) => {
     const [isVisible, setIsVisible] = useState(false);
     const thumbnailRef = useRef(null);
 
@@ -358,6 +312,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
     );
   };
 
+  // opening custom contextmenu on contextmenu event
   function oncontextmenu(e) {
     e.preventDefault();
     let selection = document.getSelection();
@@ -370,10 +325,11 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
       />
     );
   }
+
   return (
     <div
       onClick={() => {
-        setContextMenu(null);
+        setContextMenu(null); // remove context menu onclick
       }}
       className="pdfReader relative w-[calc(100%-2rem)] h-[calc(100%-2rem)] m-4 overflow-hidden inset-0 flex flex-col bg-gray-100 dark:bg-gray-900"
     >
@@ -414,6 +370,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
           <button
             className="dark:hover:bg-gray-700 hover:bg-gray-400 dark:active:bg-gray-600 active:bg-gray-50 rounded-full transition-background duration-150"
             onClick={async () => {
+              // close the open file
               setFileName(null);
               setFilePath(null);
             }}
@@ -463,6 +420,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
                 min={1}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
+                    // accept maximum value not greater than total nunber of pages
                     const value =
                       Math.max(
                         1,
@@ -477,6 +435,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
                   e.target.select();
                 }}
                 onInput={(e) => {
+                  // update width on input
                   e.target.style.width =
                     Math.min(String(e.target.value).length + 3, 10) + "ch";
                 }}
@@ -589,12 +548,13 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
             className={`h-full w-full relative ${
               scale >= 1 ? "" : "flex justify-center"
             }`}
-            loading={loading}
+            loading={<img src="images/loading.svg" className="w-[50%] h-full"/>}
             onItemClick={onItemClick}
           >
             <Page
               pageNumber={pageNumber}
               devicePixelRatio={
+                // adjust dpr for smaller scales for clear image
                 scale >= 1
                   ? window.devicePixelRatio
                   : window.devicePixelRatio * 2
@@ -602,7 +562,7 @@ const PdfViewer = ({ setFileName, setFilePath, url }) => {
               scale={scale}
               width={pageWidth}
               canvasBackground="white"
-              loading={loading}
+              loading={<img src="images/loading.svg" className="w-[50%] h-full"/>}
               rotate={rotate}
             />
           </Document>

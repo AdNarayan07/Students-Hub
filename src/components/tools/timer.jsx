@@ -1,45 +1,57 @@
+/*
+  Component for timers tool
+  This code was originally written in vanilla js so you will find some old fashioned code not in react.
+  Will convert this as per react standards later
+*/
+
 import { invoke } from "@tauri-apps/api/core";
 
-import { useActiveState } from "./active_state_context";
+import { useActiveState } from "../common/active_state_context";
 import { useEffect } from "react";
 let timers = new Map();
 
+// function to handle play/pause button
 window.play_pause_start_timer = async function (id) {
   if (timers.get(id)?.active) {
-    timers.get(id).paused = await invoke("timer_play_pause", { id });
+    timers.get(id).paused = await invoke("timer_play_pause", { id }); // invoke play/pause if the timer is active
   } else {
-    const response = await invoke("start_timer", { id });
+    const response = await invoke("start_timer", { id }); // invoke start if the timer is inactive
     if (response === null) {
-      alert("No timer found in the backend with this id!");
+      console.error("No timer found in the backend with this id!");
     }
-    timers.get(id).active = response;
-    timers.get(id).paused = false;
+    timers.get(id).active = response; // turn timer' active state to true if the response is not null
+    timers.get(id).paused = false; // also start the timer along with activating
   }
-  fetch_and_display_timers(id);
+  fetch_and_display_timers(id); // update the timers map
 };
 
+// function to reset a timer to its creation state
 window.reset_timer = async function (id) {
-  const response = await invoke("reset_timer", { id });
+  const response = await invoke("reset_timer", { id }); // invoke the reset_timer command
   if (response === null)
-    return alert("No timer found in the backend with this id!");
-  fetch_and_display_timers(id);
-  timers.get(id).active = response;
+    return console.error("No timer found in the backend with this id!");
+  fetch_and_display_timers(id); // update the timers map
+  timers.get(id).active = response; // turn timer's active state to false
 };
 
+// function to delete the timer
 window.delete_timer = async function (id) {
-  const response = await invoke("del_timer", { id });
+  const response = await invoke("del_timer", { id }); // invoke delete_timer
   if (response === null) return alert("Couldn't delete timer!");
-  document.getElementById("timer" + id).remove();
-  timers.delete(id);
-  show_hide_new_timer_button(timers);
+  document.getElementById("timer" + id).remove(); // remove the timer from frontend
+  timers.delete(id); // update timer state
+  show_hide_new_timer_button(timers); // show/hide new timer creation button based on current number
 };
 
+// function to show/hide the timer creation button
 function show_hide_new_timer_button(timers) {
   if (
     !document.getElementById("show_hide_create_timer_button") ||
     !document.getElementById("create_timer_form")
   )
     return;
+  
+  // show if there are less than 10 timers, else hide
   if (timers.size < 10) {
     document.getElementById("show_hide_create_timer_button").style.display = "";
     document.getElementById("create_timer_form").style.display = "";
@@ -50,12 +62,15 @@ function show_hide_new_timer_button(timers) {
   }
 }
 
+// function to fetch the timers state from backend and update frontend
 async function fetch_and_display_timers(timer_id = undefined) {
-  const timers_string = await invoke("get_timers", { type: "Default" });
-  timers = new Map(JSON.parse(timers_string));
+  const timers_string = await invoke("get_timers", { type: "Default" }); // invoke get_timers
+  timers = new Map(JSON.parse(timers_string)); // update timers map
+
+  // push all the timers in timersList <ul>
   const timersList = document.getElementById("timers");
   if (!timersList) return ``;
-  if (!timer_id) timersList.innerHTML = "";
+  if (!timer_id) timersList.innerHTML = ""; // if timer_id is undefined, it means to update the state of all timers so clear the list
   if (!timers.size)
     return (timersList.innerHTML = `
     <li class="col-span-full flex items-center justify-center">
@@ -69,8 +84,10 @@ async function fetch_and_display_timers(timer_id = undefined) {
             </div>
         </div>
     </li>`);
+
+  // formatting timer data and displaying buttons etc
   timers.forEach((timer, id) => {
-    if (timer_id && timer_id != id) return;
+    if (timer_id && timer_id != id) return; // if timer id is defined, but its not equal to this timer, dont update it
     const duration = formatDuration(timer.duration);
     let li = document.getElementById("timer" + id);
     if (!li) {
@@ -131,9 +148,12 @@ async function fetch_and_display_timers(timer_id = undefined) {
 
     li.appendChild(buttonContainer);
   });
-  show_hide_new_timer_button(timers);
+
+  show_hide_new_timer_button(timers); // show/hide create timer button based on total number of timers
 }
 
+
+// function to change duration into displayable format with styling
 function formatDuration(duration) {
   const totalSeconds = duration.secs;
   const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
@@ -157,19 +177,25 @@ function formatDuration(duration) {
     `;
 }
 
+// function to update the timers display, used inside request animation frame to constantly update the running timers
 function updateDisplay() {
   if (timers && timers.size) {
     timers.forEach(async (timer, id) => {
+      // only run for active and unpaused timers
       if (timer.active && !timer.paused) {
+        // invoke the frontend 
         const remaining_ms = await invoke("get_remaining_ms", {
           id: parseInt(id),
         });
         if (remaining_ms == 0) {
+          // if time remaining is 0, update the update the timer display (only for timer with id 'id')
           fetch_and_display_timers(id);
         } else {
+          // update how much time is remaining
           const secs = Math.floor(remaining_ms / 1000);
           const nanos = (remaining_ms % 1000) * 1000000;
           const formatted_duration = formatDuration({ secs, nanos });
+          
           let duration_container = document.querySelector(
             `li#timer${id} > div.duration`
           );
@@ -183,6 +209,7 @@ function updateDisplay() {
   requestAnimationFrame(updateDisplay);
 }
 
+// function to select all contents of an element
 function selectAllContent(element) {
   const range = document.createRange();
   const selection = window.getSelection();
@@ -196,52 +223,62 @@ function selectAllContent(element) {
   selection.addRange(range);
 }
 
+// function to change the digit (in create timer form)
 function digit_change(direction, target, upto5 = false) {
   target = document.getElementById(target);
   let current_digit = parseInt(target.value);
 
   let next_digit;
+  // if upto5 is true, restrict the digits from 0-5 (as in case of 10s place of second and minute, they ca'nt be grater than 59, right?)
   if (direction === "up") {
     next_digit = (current_digit + 1) % (upto5 ? 6 : 10);
   } else if (direction === "down") {
     next_digit = (current_digit - 1 + (upto5 ? 6 : 10)) % (upto5 ? 6 : 10);
   }
-  target.value = next_digit;
+  target.value = next_digit; //update value
 }
 
+// function to show/hide the form on clicking #show_hide_create_timer_button
 function show_hide_create_timer_form() {
   let button = document.getElementById("show_hide_create_timer_button");
   let form = document.getElementById("create_timer_form");
+
+  // toggling the form "hidden" and updating look of button
   let force_rotate = form.classList.toggle("hidden");
   button.classList.toggle("rotate-[225deg]", !force_rotate);
   button.classList.toggle("bg-red-100", !force_rotate);
   button.classList.toggle("dark:bg-red-900", !force_rotate);
   button.classList.toggle("bg-blue-100", force_rotate);
   button.classList.toggle("dark:bg-blue-900", force_rotate);
+
+  // reset the value of all digits to 0
   Array.from(document.getElementsByClassName("digit_span")).forEach(
     (e) => (e.value = "0")
   );
+
+  // reset the timer_name field
   let name_field = document.getElementById("new_timer_name");
   name_field.focus();
   name_field.value = "New Timer";
 }
 
+// function to handle keydown event (inside create form button for each digit inputs)
 function handle_keydown(event, upto5) {
   selectAllContent(event.target);
   switch (event.key) {
     case "ArrowUp":
       event.preventDefault();
-      digit_change("up", event.target.id, upto5);
+      digit_change("up", event.target.id, upto5); // increae the digit
       break;
 
     case "ArrowDown":
       event.preventDefault();
-      digit_change("down", event.target.id, upto5);
+      digit_change("down", event.target.id, upto5); // decrease the digit
       break;
 
     case "Enter":
       event.preventDefault();
-      document.getElementById("new_timer_create").focus();
+      document.getElementById("new_timer_create").focus(); // focus submit button on clicking Enter
       break;
 
     default:
@@ -249,38 +286,50 @@ function handle_keydown(event, upto5) {
   }
 }
 
+// function to create new timer
 async function create_timer(h10, h1, m10, m1, s10, s1, name) {
+  // parsing number from digits
   let hours = parseInt(h10 + h1);
   let minutes = parseInt(m10 + m1);
   let seconds = parseInt(s10 + s1);
 
   let total_seconds = hours * 3600 + minutes * 60 + seconds;
-  if (total_seconds >= 100 * 3600) return alert("limit exceeded");
-  if (!total_seconds) return alert("Zero Time!");
+  if (total_seconds >= 100 * 3600) return alert("limit exceeded"); // can't create a timer of more than 100 hrs
+  if (!total_seconds) return alert("Zero Time!"); // can't create a timer with 0 time
+
+  // invoke create_timer command
   await invoke("create_timer", {
     type: "Default",
     seconds: total_seconds,
     name,
   });
+
+  // update the display
   await fetch_and_display_timers();
   show_hide_create_timer_form();
 }
 
+// Timer Component
 export default function Timer() {
   const { currentTool } = useActiveState();
 
+  // diaplying the timers + starting animation frame
   useEffect(() => {
     fetch_and_display_timers();
     requestAnimationFrame(updateDisplay);
   }, []);
 
+  // Component for inputting digits in the create timer form
   function DigitInput({ id, nextId, upto5 }) {
+    // if the input is not a digit, prevent the input
     const handleBeforeInput = (event) => {
       if (!/^\d*$/.test(event.data)) event.preventDefault();
     };
 
     function handle_input(event) {
-      if (upto5 && parseInt(event.nativeEvent.data) > 5) event.data = 5;
+      if (upto5 && parseInt(event.nativeEvent.data) > 5) event.data = 5; // if the input box is m10 or s10, limit the digits from 0 to 5
+
+      // focus next element and input the data in digit container
       let next_element = document.getElementById(nextId);
       if (next_element) next_element.focus();
       else selectAllContent(event.target);
@@ -362,7 +411,7 @@ export default function Timer() {
               className="text-base font-semibold p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-300 pr-10"
               onFocus={(event) => event.target.select()}
               onKeyDown={(e) => {
-                if (e.key === "Enter") document.getElementById("h10").focus();
+                if (e.key === "Enter") document.getElementById("h10").focus(); // fcous the first digit container on Enter
               }}
             />
             <img
