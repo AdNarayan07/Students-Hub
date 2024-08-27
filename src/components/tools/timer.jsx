@@ -266,6 +266,12 @@ function show_hide_create_timer_form() {
 function handle_keydown(event, upto5) {
   selectAllContent(event.target);
   switch (event.key) {
+    case "Backspace":
+      event.preventDefault();
+      event.target.value = 0;
+      selectAllContent(event.target);
+      break;
+
     case "ArrowUp":
       event.preventDefault();
       digit_change("up", event.target.id, upto5); // increae the digit
