@@ -1,4 +1,4 @@
-<h1  align="left"><img  src="https://github.com/AdNarayan07/Students-Hub/blob/master/src-tauri/icons/128x128.png" style="margin: 0 10px"/> Student's Hub</h1>
+<h1  align="left"><img  src="https://github.com/AdNarayan07/Students-Hub/blob/master/src-tauri/icons/128x128.png" style="margin: 0 10px; width: 50px; top: 15px; position: relative;"/> Student's Hub</h1>
 
 ⚠️ Note: This project is made only for WIndows OS.
 ## Introduction
